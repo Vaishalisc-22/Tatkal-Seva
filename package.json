@@ -1,0 +1,20 @@
+{
+  "name": "tatkal-seva",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "seed": "node server/database/seed.js",
+    "test": "node test/test-algorithms.js",
+    "dev": "node server/server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.3.0"
+  }
+}

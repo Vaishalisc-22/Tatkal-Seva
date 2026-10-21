@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tatkal Seva | Emergency Ambulance Route Planner (DAA Project)</title>
+  <meta name="description" content="College DAA Project: Emergency ambulance route-planning system using manual Dijkstra and A* shortest path algorithms with live interactive map and algorithmic comparison.">
+  
+  <!-- Google Fonts: Outfit & Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- App Custom Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Top Navigation Header -->
+  <header class="app-header">
+    <div class="header-branding">
+      <div class="header-logo-icon">
+        <i class="fa-solid fa-truck-medical"></i>
+      </div>
+      <div class="branding-text">
+        <div class="branding-title">
+          <h1>Tatkal Seva</h1>
+          <span class="badge-project">DAA Project</span>
+        </div>
+        <p class="branding-subtitle">Emergency Ambulance Route Planner &amp; Algorithm Benchmark (Dijkstra vs A*)</p>
+      </div>
+    </div>
+
+    <!-- Quick Action Bar -->
+    <div class="header-actions">
+      <button id="btn-print-report" class="btn btn-outline" title="Print/Export 1-Page DAA Benchmark Viva Report">
+        <i class="fa-solid fa-file-pdf text-amber"></i> Print Viva Report
+      </button>
+      <button id="btn-viva-guide" class="btn btn-outline" title="Open DAA Viva Preparation Cheat Sheet & Theory Guide">
+        <i class="fa-solid fa-graduation-cap"></i> DAA Viva Guide
+      </button>
+      <button id="btn-graph-inspect" class="btn btn-outline" title="View Road Network Adjacency Matrix & Topology">
+        <i class="fa-solid fa-network-wired"></i> Graph Topology
+      </button>
+      <button id="btn-reset-map" class="btn btn-outline" title="Reset View and Clear Route Overlays">
+        <i class="fa-solid fa-arrows-rotate"></i> Reset
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Application Workspace -->
+  <div class="workspace-container">
+    <!-- Left Sidebar: Route Configuration, DAA Controls & Dispatch -->
+    <aside class="sidebar-panel">
+      <!-- Section: Navigation Mode Tabs -->
+      <div class="control-card">
+        <div class="tab-pill-group">
+          <button id="tab-plan" class="tab-pill active" data-tab="plan">
+            <i class="fa-solid fa-route"></i> Route Planner
+          </button>
+          <button id="tab-triage" class="tab-pill" data-tab="triage">
+            <i class="fa-solid fa-hospital-user"></i> Hospital Triage
+          </button>
+          <button id="tab-traffic" class="tab-pill" data-tab="traffic">
+            <i class="fa-solid fa-traffic-light"></i> Traffic Simulator
+          </button>
+        </div>
+
+        <!-- TAB 1: Route Planning -->
+        <div id="view-plan" class="tab-view active">
+          <!-- Start / Source Selection -->
+          <div class="form-group">
+            <label for="select-start-node" class="form-label">
+              <span class="step-badge start-badge">A</span>
+              Ambulance Origin Point:
+            </label>
+            <div class="input-with-icon">
+              <i class="fa-solid fa-location-crosshairs text-amber"></i>
+              <select id="select-start-node" class="form-select">
+                <option value="" disabled selected>Loading network nodes...</option>
+              </select>
+            </div>
+            <div class="node-helper-text" id="start-node-desc">Choose station or click node on map</div>
+          </div>
+
+          <!-- Destination / Target Selection -->
+          <div class="form-group">
+            <label for="select-target-node" class="form-label">
+              <span class="step-badge target-badge">B</span>
+              Emergency Destination:
+            </label>
+            <div class="input-with-icon">
+              <i class="fa-solid fa-location-dot text-crimson"></i>
+              <select id="select-target-node" class="form-select">
+                <option value="" disabled selected>Loading destinations...</option>
+              </select>
+            </div>
+            <div class="node-helper-text" id="target-node-desc">Choose hospital or emergency site</div>
+          </div>
+
+          <!-- Algorithm Selection (DAA Core) -->
+          <div class="form-group">
+            <label class="form-label">
+              <i class="fa-solid fa-brain text-cyan"></i>
+              DAA Algorithm Selection:
+            </label>
+            <div class="algorithm-selector-grid">
+              <label class="algo-radio-card" id="card-algo-astar">
+                <input type="radio" name="algorithm" value="astar" checked>
+                <div class="algo-card-content">
+                  <div class="algo-title-row">
+                    <span class="algo-name">A* (A-Star)</span>
+                    <span class="badge-chip chip-cyan">Heuristic</span>
+                  </div>
+                  <span class="algo-desc">Informed Best-First search: f(n) = g(n) + h(n). Prunes search space.</span>
+                </div>
+              </label>
+
+              <label class="algo-radio-card" id="card-algo-dijkstra">
+                <input type="radio" name="algorithm" value="dijkstra">
+                <div class="algo-card-content">
+                  <div class="algo-title-row">
+                    <span class="algo-name">Dijkstra's</span>
+                    <span class="badge-chip chip-amber">Greedy</span>
+                  </div>
+                  <span class="algo-desc">Uniform cost search: finds guaranteed optimal path expanding in all directions.</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Optimization Parameters -->
+          <div class="param-row">
+            <div class="form-group flex-1">
+              <label for="select-metric" class="form-label-sm">Optimization Objective:</label>
+              <select id="select-metric" class="form-select-sm">
+                <option value="time" selected>Fastest Travel Time (mins)</option>
+                <option value="distance">Shortest Road Distance (km)</option>
+              </select>
+            </div>
+            <div class="form-group flex-1" id="group-heuristic">
+              <label for="select-heuristic" class="form-label-sm">A* Heuristic Formula:</label>
+              <select id="select-heuristic" class="form-select-sm">
+                <option value="haversine" selected>Haversine (Great-Circle)</option>
+                <option value="euclidean">Euclidean (Flat-Plane)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Selection Validation Warning Banner -->
+          <div id="node-conflict-warning" class="node-conflict-alert hidden">
+            <i class="fa-solid fa-triangle-exclamation text-amber"></i>
+            <span id="node-conflict-text">Origin and Destination cannot be the same node. Please choose distinct locations.</span>
+          </div>
+
+          <!-- Primary Calculation Action Buttons -->
+          <div class="action-buttons-stack">
+            <button id="btn-calculate-route" class="btn btn-primary btn-block">
+              <i class="fa-solid fa-bolt"></i> Compute Optimal Route
+            </button>
+            <button id="btn-compare-algorithms" class="btn btn-secondary btn-block">
+              <i class="fa-solid fa-code-compare"></i> Compare Dijkstra vs A* Side-by-Side
+            </button>
+          </div>
+        </div>
+
+        <!-- TAB 2: Hospital Triage Dispatch -->
+        <div id="view-triage" class="tab-view">
+          <div class="triage-intro-box">
+            <i class="fa-solid fa-kit-medical text-crimson"></i>
+            <div>
+              <strong>Emergency 108 Smart Triage</strong>
+              <p>Select an incident location. Tatkal Seva evaluates all regional hospitals, travel times, and live ICU bed availability to route the patient to the optimal trauma center.</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="select-triage-incident" class="form-label">Accident / Incident Location:</label>
+            <select id="select-triage-incident" class="form-select">
+              <option value="" disabled selected>Select emergency incident...</option>
+            </select>
+          </div>
+
+          <button id="btn-run-triage" class="btn btn-accent btn-block">
+            <i class="fa-solid fa-stethoscope"></i> Find Optimal Emergency Hospital
+          </button>
+
+          <div id="triage-results-container" class="triage-results-card hidden">
+            <!-- Populated via JavaScript -->
+          </div>
+        </div>
+
+        <!-- TAB 3: Dynamic Traffic Simulation -->
+        <div id="view-traffic" class="tab-view">
+          <div class="traffic-intro-box">
+            <i class="fa-solid fa-triangle-exclamation text-amber"></i>
+            <div>
+              <strong>Live Road Network Congestion Scenarios</strong>
+              <p>Test algorithm resilience against dynamic obstacles like flash floods, VIP motorcades, and peak-hour gridlocks.</p>
+            </div>
+          </div>
+
+          <div class="scenario-buttons-grid">
+            <button class="btn btn-scenario" data-scenario="silk_board_gridlock">
+              <i class="fa-solid fa-car-burst text-amber"></i>
+              <span>Silk Board Peak Gridlock</span>
+              <small>4x delay on South Ring interchange</small>
+            </button>
+            <button class="btn btn-scenario" data-scenario="flooded_underpasses">
+              <i class="fa-solid fa-cloud-showers-water text-cyan"></i>
+              <span>Monsoon Flooded Underpasses</span>
+              <small>Mekhri &amp; Domlur impassable</small>
+            </button>
+            <button class="btn btn-scenario" data-scenario="vip_corridor">
+              <i class="fa-solid fa-shield-halved text-emerald"></i>
+              <span>VIP Green Corridor Protocol</span>
+              <small>CBD closed, Expressways clear</small>
+            </button>
+            <button class="btn btn-scenario" data-scenario="clear_all">
+              <i class="fa-solid fa-road text-slate"></i>
+              <span>Reset to Baseline Clear</span>
+              <small>1.0x baseline traffic on all roads</small>
+            </button>
+          </div>
+
+          <div class="manual-traffic-editor">
+            <label class="form-label-sm">Interactive Segment Blockage:</label>
+            <p class="text-xs text-muted">Click any road line on the map to toggle blockage or inspect current speed and traffic multiplier.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Route Results HUD Panel -->
+      <div id="route-results-panel" class="control-card hud-results-card hidden">
+        <div class="hud-header">
+          <div class="hud-title">
+            <i class="fa-solid fa-square-poll-vertical text-emerald"></i>
+            <h3>Route Results</h3>
+          </div>
+          <span id="badge-active-algo" class="badge-chip chip-cyan">A* SEARCH</span>
+        </div>
+
+        <!-- Key Metrics Quad Grid -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <span class="metric-label">Estimated Time</span>
+            <div class="metric-value-wrap">
+              <span id="metric-time" class="metric-value text-amber">--</span>
+              <span class="metric-unit">mins</span>
+            </div>
+            <span class="metric-sub">Fastest transit</span>
+          </div>
+
+          <div class="metric-card">
+            <span class="metric-label">Total Distance</span>
+            <div class="metric-value-wrap">
+              <span id="metric-distance" class="metric-value text-cyan">--</span>
+              <span class="metric-unit">km</span>
+            </div>
+            <span class="metric-sub">Road path</span>
+          </div>
+
+          <div class="metric-card">
+            <span class="metric-label">Execution Time</span>
+            <div class="metric-value-wrap">
+              <span id="metric-exec-time" class="metric-value text-emerald">--</span>
+              <span class="metric-unit">µs</span>
+            </div>
+            <span id="metric-exec-ms" class="metric-sub">-- ms</span>
+          </div>
+
+          <div class="metric-card">
+            <span class="metric-label">Nodes Explored</span>
+            <div class="metric-value-wrap">
+              <span id="metric-nodes-explored" class="metric-value text-crimson">--</span>
+              <span class="metric-unit" id="metric-nodes-total">/ 30</span>
+            </div>
+            <span id="metric-relaxations" class="metric-sub">-- relaxations</span>
+          </div>
+        </div>
+
+        <!-- Path Sequence Accordion -->
+        <div class="path-sequence-box">
+          <div class="path-sequence-header" id="toggle-path-details">
+            <span><i class="fa-solid fa-shoe-prints"></i> Hop-by-Hop Route Sequence (<span id="path-hop-count">0</span> hops)</span>
+            <i class="fa-solid fa-chevron-down toggle-icon"></i>
+          </div>
+          <div id="path-nodes-list" class="path-nodes-list-content">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Live Ambulance Dispatch Simulation Controls -->
+        <div class="sim-controls-card">
+          <div class="sim-controls-header">
+            <span><i class="fa-solid fa-truck-fast text-crimson"></i> Ambulance Drive Simulation</span>
+            <div class="sim-speed-toggles">
+              <button class="btn-speed active" data-speed="1">1x</button>
+              <button class="btn-speed" data-speed="2">2x</button>
+              <button class="btn-speed" data-speed="4">4x</button>
+            </div>
+          </div>
+          <div class="sim-actions-row">
+            <button id="btn-start-simulation" class="btn btn-simulate">
+              <i class="fa-solid fa-play"></i> Run Simulation
+            </button>
+            <button id="btn-stop-simulation" class="btn btn-stop-sim hidden">
+              <i class="fa-solid fa-stop"></i> Stop
+            </button>
+            <button id="btn-toggle-siren" class="btn btn-icon" title="Toggle Siren Sound & Visual Strobe">
+              <i class="fa-solid fa-bullhorn text-crimson"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step-by-Step Graph-Search Exploration Visualizer -->
+        <div id="frontier-visualizer-card" class="step-visualizer-card">
+          <div class="visualizer-header">
+            <span><i class="fa-solid fa-diagram-project text-cyan"></i> Step-by-Step Search Frontier</span>
+            <span id="frontier-step-counter" class="badge-chip chip-cyan">Step 0 / 0</span>
+          </div>
+          <div class="visualizer-node-info" id="frontier-current-node">
+            Click &quot;Play Search&quot; or step through to watch node exploration wave
+          </div>
+          <div class="visualizer-controls-row">
+            <button id="btn-frontier-prev" class="btn btn-sm btn-outline" title="Previous Step">
+              <i class="fa-solid fa-backward-step"></i>
+            </button>
+            <button id="btn-frontier-play" class="btn btn-sm btn-accent" title="Auto-Play Step-by-Step Search">
+              <i class="fa-solid fa-play"></i> Play Search
+            </button>
+            <button id="btn-frontier-next" class="btn btn-sm btn-outline" title="Next Step">
+              <i class="fa-solid fa-forward-step"></i>
+            </button>
+            <button id="btn-frontier-reset" class="btn btn-sm btn-outline" title="Reset Search Wave">
+              <i class="fa-solid fa-rotate-left"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Center/Right: Interactive Leaflet Map Viewport -->
+    <main class="map-viewport-wrapper">
+      <div id="map" class="map-container"></div>
+
+      <!-- Floating Map Dual Comparison HUD & Route Legend -->
+      <div id="map-comparison-hud" class="map-comparison-floating-card hidden">
+        <div class="comparison-card-top">
+          <div class="comp-badge-title">
+            <i class="fa-solid fa-code-compare text-cyan"></i>
+            <strong>Dual Route Comparison</strong>
+          </div>
+          <button id="btn-close-map-comparison" class="btn-comp-close" title="Exit Comparison View">&times;</button>
+        </div>
+
+        <!-- Summary Winner Banner -->
+        <div id="comp-hud-winner-badge" class="comp-hud-winner">
+          <i class="fa-solid fa-trophy text-amber"></i>
+          <span id="comp-hud-winner-text">A* explored fewer nodes</span>
+        </div>
+
+        <!-- Dual Algorithm Metrics Table & Legend -->
+        <div class="comp-hud-grid">
+          <!-- Dijkstra Column -->
+          <div class="comp-hud-col dijkstra-hud-col">
+            <div class="comp-col-header">
+              <label class="comp-toggle-label" title="Toggle Dijkstra path on map">
+                <input type="checkbox" id="toggle-dijkstra-layer" checked>
+                <span class="legend-route-swatch swatch-dijkstra"></span>
+                <strong>Dijkstra (Greedy)</strong>
+              </label>
+            </div>
+            <div class="comp-stats-list">
+              <div class="comp-stat-row">
+                <span class="stat-name">Distance:</span>
+                <span class="stat-val"><strong class="stat-num text-cyan" id="comp-dijkstra-dist">--</strong> km</span>
+              </div>
+              <div class="comp-stat-row">
+                <span class="stat-name">Travel Time:</span>
+                <span class="stat-val"><strong class="stat-num text-amber" id="comp-dijkstra-time">--</strong> mins</span>
+              </div>
+              <div class="comp-stat-row">
+                <span class="stat-name">Exec Time:</span>
+                <span class="stat-val"><strong class="stat-num text-emerald" id="comp-dijkstra-exec">--</strong> µs</span>
+              </div>
+              <div class="comp-stat-row">
+                <span class="stat-name">Visited Nodes:</span>
+                <span class="stat-val"><strong class="stat-num text-crimson" id="comp-dijkstra-nodes">--</strong> / 30</span>
+              </div>
+              <div class="comp-stat-row">
+                <span class="stat-name">Relaxations:</span>
+                <span class="stat-val"><strong class="stat-num text-slate" id="comp-dijkstra-relax">--</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- A* Column -->
+          <div class="comp-hud-col astar-hud-col">
+            <div class="comp-col-header">
+              <label class="comp-toggle-label" title="Toggle A* path on map">
+                <input type="checkbox" id="toggle-astar-layer" checked>
+                <span class="legend-route-swatch swatch-astar"></span>
+                <strong>A* (Heuristic)</strong>
+              </label>
+            </div>
+            <div class="comp-stats-list">
+              <div class="comp-stat-row">
+                <span class="stat-name">Distance:</span>
+                <span class="stat-val"><strong class="stat-num text-cyan" id="comp-astar-dist">--</strong> km</span>
+              </div>
+              <div class="comp-stat-row">
+                <span class="stat-name">Travel Time:</span>
+                <span class="stat-val"><strong class="stat-num text-amber" id="comp-astar-time">--</strong> mins</span>
+              </div>
+              <div class="comp-stat-row">
+                <span class="stat-name">Exec Time:</span>
+                <span class="stat-val"><strong class="stat-num text-emerald" id="comp-astar-exec">--</strong> µs</span>
+              </div>
+              <div class="comp-stat-row">
+                <span class="stat-name">Visited Nodes:</span>
+                <span class="stat-val"><strong class="stat-num text-crimson" id="comp-astar-nodes">--</strong> / 30</span>
+              </div>
+              <div class="comp-stat-row">
+                <span class="stat-name">Relaxations:</span>
+                <span class="stat-val"><strong class="stat-num text-slate" id="comp-astar-relax">--</strong></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Overlapping Path Identification Legend -->
+        <div class="comp-overlap-guide">
+          <div class="overlap-visual-key">
+            <span class="swatch-overlap-composite"></span>
+            <span class="overlap-label"><strong>Overlapping Segments:</strong> Solid Amber (Dijkstra) + Royal Blue (A*)</span>
+          </div>
+        </div>
+
+        <!-- Action Row -->
+        <div class="comp-hud-actions">
+          <button id="btn-open-comp-details" class="btn btn-outline btn-block btn-sm">
+            <i class="fa-solid fa-table-list"></i> Full Benchmark Matrix &amp; Theory
+          </button>
+        </div>
+      </div>
+
+      <!-- Map Floating Overlay: Legend & Quick Toggles -->
+      <div class="map-floating-legend">
+        <div class="legend-header">
+          <span><i class="fa-solid fa-layer-group"></i> Road Network Legend</span>
+        </div>
+        <div class="legend-items">
+          <div class="legend-item"><span class="legend-marker marker-hospital"></span> Hospital (ICU Facility)</div>
+          <div class="legend-item"><span class="legend-marker marker-ambulance"></span> Ambulance Base Station</div>
+          <div class="legend-item"><span class="legend-marker marker-emergency"></span> Incident Hotspot</div>
+          <div class="legend-item"><span class="legend-marker marker-junction"></span> Road Junction / Flyover</div>
+          <div class="legend-item"><span class="legend-line line-normal"></span> Clear Flow (1.0x)</div>
+          <div class="legend-item"><span class="legend-line line-heavy"></span> Congested Corridor</div>
+          <div class="legend-item"><span class="legend-line line-blocked"></span> Blocked / Impassable</div>
+        </div>
+      </div>
+
+      <!-- Map Status Notification Bar -->
+      <div id="map-status-toast" class="status-toast hidden">
+        <i class="fa-solid fa-circle-info"></i>
+        <span id="toast-message">Select origin and destination to calculate emergency route.</span>
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL 1: Side-by-Side Algorithm Comparison -->
+  <div id="modal-comparison" class="modal-backdrop hidden">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <i class="fa-solid fa-scale-balanced text-cyan"></i>
+          <div>
+            <h2>DAA Algorithm Benchmark: Dijkstra vs. A* Search</h2>
+            <p class="modal-subtitle">Evaluating Greedy Uniform-Cost Search against Heuristic Best-First Search on identical inputs</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btn-close-comparison">&times;</button>
+      </div>
+
+      <div class="modal-body" id="comparison-modal-body">
+        <!-- Injected via JavaScript from /api/compare -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: DAA Viva Cheat Sheet & Theoretical Guide -->
+  <div id="modal-viva" class="modal-backdrop hidden">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <i class="fa-solid fa-book-open-reader text-amber"></i>
+          <div>
+            <h2>DAA Viva Voce &amp; Project Defense Manual</h2>
+            <p class="modal-subtitle">Design and Analysis of Algorithms - Theory, Proofs, and Viva Questions</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btn-close-viva">&times;</button>
+      </div>
+
+      <div class="modal-body" id="viva-modal-body">
+        <!-- Rendered by viva-guide.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: Graph Topology & Adjacency List Inspector -->
+  <div id="modal-graph-inspect" class="modal-backdrop hidden">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <i class="fa-solid fa-diagram-project text-emerald"></i>
+          <div>
+            <h2>Road Network Weighted Graph Data Structure</h2>
+            <p class="modal-subtitle">G = (V, E) Adjacency List representation used for Dijkstra and A*</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btn-close-graph-inspect">&times;</button>
+      </div>
+
+      <div class="modal-body" id="graph-inspect-body">
+        <!-- Rendered via JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Operation Spinner / Indicator -->
+  <div id="global-loading-indicator" class="global-loading-indicator hidden">
+    <div class="spinner-ring"></div>
+    <span id="global-loading-text">Computing optimal emergency route...</span>
+  </div>
+
+  <!-- Printable DAA Benchmark Report Container (Targeted by @media print) -->
+  <div id="printable-report-wrapper" class="printable-report-wrapper">
+    <!-- Dynamically populated by viva-guide.js when user prints report -->
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="js/api.js"></script>
+  <script src="js/viva-guide.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
